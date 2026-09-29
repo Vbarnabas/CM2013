@@ -135,16 +135,16 @@ Three default tracks, matched on difficulty (all ★★★, roughly comparable e
 an ECG-rhythm κ are not the same claim). Read each track's own card for what "good" looks like
 on that domain:
 
-| Track | Signal | Task | Split | Modes | Baseline (honest) |
+| Track | Signal | What you're predicting | Split | Modes | Baseline (honest) |
 |-------|--------|------|-------|-------|---|
-| `sleep_edf` | EEG + EOG + EMG | sleep stage (5-class) | subject | new-subject | κ 0.84 (reference) — **inflated**: above the κ≈0.76 human-rater ceiling; see `sleep_edf_card.md` before treating this as a target |
-| `ecg_cinc2017` | single-lead ECG | rhythm N/A/O/~ | record | new-record | κ 0.52 |
-| `emg_ninapro` | 10-ch surface EMG | hand gesture (12-class) | subject / repetition | **within + new-subject** | κ 0.77 within / **0.12 new-subject** |
+| `sleep_edf` | EEG + EOG + EMG | **5-stage sleep staging** — Wake / N1 / N2 / N3 / REM, one label per 30-s epoch | subject | new-subject | κ 0.84 (reference) — **inflated**: above the κ≈0.76 human-rater ceiling; see `sleep_edf_card.md` before treating this as a target |
+| `ecg_cinc2017` | single-lead ECG | **4-class rhythm** — Normal / AF / Other / Noisy, one label per recording | record | new-record | κ 0.52 |
+| `emg_ninapro` | 10-ch surface EMG | **12-class hand-gesture recognition**, one label per 200-ms window | subject / repetition | **within + new-subject** | κ 0.77 within / **0.12 new-subject** |
 
 **Two evaluation modes** (EMG): report **within-subject** *and* **new-subject** — they answer
 different deployment claims, and cross-subject is much harder. Do not hide a weak cross-subject number.
 
-**Opt-in stretch track — `bci_eegmmidb`** (64-ch EEG, L/R motor imagery, subject/trial split,
+**Opt-in stretch track — `bci_eegmmidb`** (64-ch EEG, **binary motor imagery** — did the subject imagine moving their left or right hand, one label per ~4-s trial, subject/trial split,
 within + new-subject modes, near-chance naive baseline). Available only by explicit request with
 instructor sign-off — it's meaningfully harder than the three defaults, and its honest baseline is
 close to chance until you add a spatial filter (CSP). That's the point of the track, not a flaw.
