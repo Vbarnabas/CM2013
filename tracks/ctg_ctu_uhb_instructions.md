@@ -53,20 +53,20 @@ trade-offs). The grade is on the quality of the reasoning, not on matching one b
 
 ## 4c. The design-decision menus (stages 2-5) — what the scaffold offers, and the trade-off
 
-Everything here is a **menu, not a recipe**. `tracks/adapter.py` ships each option *with its
-trade-off* and no blessed answer; the rubric grades the reasoning (criteria 2 and 5), not the
-choice. The notebook's "Decision points on this track" section runs several of them side by side
-so you can watch the numbers move.
+> **The option menus themselves — the Chapter-8 denoise-by-noise-type table, spectral estimators,
+> feature selection, class imbalance, and why the validation split is *not* a choice — are in
+> [`DESIGN_MENUS.md`](DESIGN_MENUS.md), written once for all tracks. Everything below is what those
+> choices mean **on this track**.**
 
 ### Stage 2 — preprocessing · the dropout decision, shipped in the wrong place
 
 `_clean_fhr()` is called from `extract_features()` for convenience, but it is **preprocessing**.
 Moving it into `preprocess()` and choosing what to do with the signal-loss gaps — interpolate,
-exclude, or keep-and-flag — is one of the decisions this track exists to make you argue for.
-`adapter.denoise()` is importable and gives you the Chapter 8 per-noise-type menu below (call it from a `preprocess()` you write — it is not a `cfg` key on this track); note that raw FHR dropout is a
+exclude, or keep-and-flag — is one of the decisions you will need to defend in your report.
+`adapter.denoise()` is importable and gives you the Chapter 8 per-noise-type menu in [`DESIGN_MENUS.md`](DESIGN_MENUS.md) (call it from a `preprocess()` you write — it is not a `cfg` key on this track); note that raw FHR dropout is a
 **data-integrity** problem in §8.2's sense ("bad segments should be detected and excluded or flagged,
 **not silently filtered**"), not a noise-remedy problem, and conflating the two is the specific
-mistake this track punishes.
+mistake to avoid here: it costs you under Criterion 2 (signal-processing rigor).
 
 ### Stage 2 — the Chapter 8 noise-type menu · **available as functions, not wired into this track's `cfg`**
 
@@ -76,37 +76,12 @@ you to argue about — so `cfg={"preprocess": "denoise", ...}` is **rejected** w
 `UnsupportedCfgKey` error rather than silently ignored. Moving it is a code change (override
 `preprocess()` yourself, as §3 says), not a cfg toggle.
 
-The functions themselves are real and importable, and the table below is the decision you should still be making — you just have to **call them yourself** from a `preprocess()` you write (`from adapter import denoise, bandpass_notch, wavelet_denoise`). Once you have, register the knobs so they become first-class config options:
+The functions themselves are real and importable, and the per-noise-type table in [`DESIGN_MENUS.md`](DESIGN_MENUS.md) is the decision you should still be making — you just have to **call them yourself** from a `preprocess()` you write (`from adapter import denoise, bandpass_notch, wavelet_denoise`). Once you have, register the knobs so they become first-class config options:
 
 ```python
 track = CTGTrack()
 track.declare_cfg_keys("preprocess", "impulsive", "baseline", "powerline", "broadband")
 ```
-
-
-Chapter 8's rule is that you do not pick a filter, you **identify a corruption and then pick its
-remedy** — §8.11: *"the noise's signature chooses the tool … not the reverse."* So
-`adapter.denoise()` takes one key per problem, not one key per technique:
-
-| Ch. 8 noise type | key | options | the trade-off |
-|---|---|---|---|
-| Impulsive / electrode pop (§8.7) | `impulsive` | `"median"` | the only remedy that works — a linear filter "lets the outlier vote" and smears the spike. A window longer than your narrowest feature flattens it |
-| Baseline wander (§8.8) | `baseline` | `"highpass"` · `"detrend"` † · `"wavelet"` † | 0.5 Hz is fine for monitoring; a *diagnostic* ECG needs 0.05 Hz — too high a corner "can manufacture artificial ST shifts that mimic ischaemia". `"detrend"` avoids the corner but subtracts genuine slow trends too |
-| Powerline (§8.6) | `powerline` | `"notch"` · `"adaptive"` · `"spectral"` † | `q` is the whole decision: too narrow misses a drifting hum, too wide bites real signal. `"adaptive"` (LMS) tracks drift; `"spectral"` avoids ringing but needs frequency resolution |
-| Broadband / white (§8.4) | `broadband` | `"movavg"` · `"savgol"` · `"wavelet"` · `"gaussian"` | §8.4: "the only clean weapons against it are averaging and improving the acquisition hardware". `"savgol"` keeps peak height/width; `"wavelet"` keeps sharp transients best; neither rejects outliers |
-
-**The order is fixed:** `impulsive → baseline → powerline → broadband`, because §9.7 requires that
-"impulse removal must precede any linear filtering". Pass `broadband="median"` and the harness
-moves it and tells you so.
-
-> † `"detrend"`, `"wavelet"` (baseline) and `"spectral"` are **extensions beyond the book** —
-> Ch. 8 names only high-pass/detrend, notch, median and averaging/adaptive. Use them if you can
-> defend them, but cite something other than the book.
-
-Two single-tool helpers sit underneath: `adapter.bandpass_notch()` (stationary narrow-band
-interference) and `adapter.wavelet_denoise()` (non-stationary transients — motion, pops, drift —
-removed *without* rounding off sharp landmarks the way a fixed band does). Full tables in their
-docstrings.
 
 ### Stage 3 — spectral estimation · available, but **not wired into this track's features**
 
@@ -115,54 +90,6 @@ docstrings.
 computes no PSD-integrated band powers, so `cfg["spectral_method"]` has nothing to act on here.
 
 The variability features (STV/LTV) are windowed variances in the time domain, not band powers.
-
-### Stage 4 — feature selection · `cfg["select"]`, `cfg["select_k"]`, `cfg["select_C"]`
-
-`"none"` (default) · `"variance"` · `"anova"` · `"mutual_info"` · `"tree"` · **`"lasso"`**.
-
-**`"lasso"`** is L1-penalised linear SVM selection: coefficients are driven to **exactly zero**, so
-you get genuine sparsity and a short, defensible feature list. It is *embedded* like `"tree"` — both
-see interactions a univariate filter cannot — but the two behave oppositely on correlated features.
-A forest **splits the credit** between near-duplicates, so both survive; L1 **picks one and zeroes
-the other**, because a second copy of an already-used feature buys no likelihood and costs penalty.
-Trade-off: the sparsity is interpretable and cheap to report, but it assumes roughly **linear**
-separability and is wrong when the real relationship is not; and because the winner inside each
-correlated cluster is close to arbitrary, **check the surviving set is stable across folds** before
-calling it "the" feature set. `select_C` is the strength (smaller C = fewer features) and it is a
-number you must report. The harness prints how many features survived each fold, and falls back
-loudly if the penalty erased them all.
-
-### Stage 5 — class imbalance · `cfg["imbalance"]`, `cfg["threshold"]`
-
-`"none"` · `"balanced"` (default) · `"balanced_subsample"` · `"resample"` · **`"smote"`** ·
-**`"adasyn"`** · `"threshold"`.
-
-**`"smote"`/`"adasyn"`** synthesise minority rows by **interpolating** between a real sample and one
-of its k nearest minority neighbours, rather than duplicating exact rows (`"resample"`) or
-reweighting the loss (`"balanced"`). The distinction to state in your report: `"balanced"` never adds
-a row; `"resample"` adds exact copies, so the minority region gets heavier but not one millimetre
-wider; `"smote"` adds **new points in feature space**, so the region genuinely expands and the
-boundary is pushed rather than weighted.
-
-That expansion is the whole benefit *and* the whole danger. A point halfway between two epochs is a
-claim about feature space, **not about physiology** — interpolate between two different patients, or
-between an N2 and an N3 epoch, and you have manufactured a body that does not exist. On these small,
-heterogeneous cohorts that risk is live, not a footnote. If you use it, say what a synthetic minority
-sample *means* on this track, and be honest if the answer is "nothing physiological".
-
-Both are fold-safe (`adapter.SMOTEd` fits inside `fit` only, never at predict time) and both need the
-optional `imbalanced-learn` package; every other option is sklearn-only. On tiny folds the
-`k_neighbors` requirement is adapted downward automatically, and a minority class with fewer than two
-members falls back to plain duplication with a loud warning rather than crashing mid-CV.
-
-### Not a menu — the validation scheme
-
-The leakage-safe split (LOSO / GroupKFold on this track's split unit) is **not** a design choice, and
-there is deliberately no config key to turn it off. It is the only number that counts for your grade,
-and `evaluate()` enforces it on every fold. The notebook's decision-points section contains a
-**required one-time demonstration** that scores the data twice — a naive random stratified split and
-the honest group-aware split — and prints the gap between them. Run it once, predict the gap first,
-and record both numbers in `RESULTS.md`.
 
 ## 5. Deliverables
 - A short **report** (features justified physiologically; results vs. the class-prior baseline).

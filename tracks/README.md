@@ -72,6 +72,9 @@ behave differently on EEG vs ECG vs IMU vs EMG.
 - `INDIVIDUAL_ASSESSMENT.md` — the critical-comparison essay and teamwork/contribution component
   (10 points, graded **per student**, kept separate from the team's 30 so an unequal team can't hide
   behind a good report, and so peer feedback can't be delegated to one team member).
+- `DESIGN_MENUS.md` — the stage-2–5 option menus (denoise by noise type, spectral estimators,
+  feature selection, class imbalance) and their trade-offs, written **once** for all tracks; each
+  `*_instructions.md` links to it and covers only what those choices mean on that signal.
 - `*_card.md` (rendered dataset cards) and `*_instructions.md` (per-track student handouts) for each
   built track. Tracks with two eval modes (EMG, BCI) add an `evaluate_modes()` method to the adapter.
 - `dataset_manifest.json` — a **machine-readable provenance record** for all six datasets
