@@ -14,6 +14,7 @@
 |---|---|---|---|---|---|
 | Data loading | DB1, E1, S1–S5 | All 27 subjects | Keep the supplied subset for the baseline. | 1 | — |
 | Classification, incl. imbalance | Supplied random forest; seed 0; `imbalance="balanced"` | `"none"` | Keep the default weighting for less frequent gestures. | 1 | — |
+| Feature selection | none (all 50 features) | anova k=25, lasso C=0.1 | Neither improved either mode: anova lowered new-subject 0.161 → 0.132 (larger spread), lasso kept 46–50 features and matched none exactly. | 1 | — |
 
 **Reproduce:** in Colab, restart and run the notebook. Locally, set `USE_REAL = True`, then run from the repo root: `python -m jupyter nbconvert --to notebook --execute notebooks/track_emg_ninapro.ipynb --output track_emg_ninapro.executed.ipynb --ExecutePreprocessor.timeout=1800`.
 
@@ -23,3 +24,4 @@
 |---|---|---|---|
 | 1 | Marissa | Real-data setup, signal inspection, baseline validation | |
 | 1 | Barnus | Recording-selection fix, evaluation and smoke-test checks | |
+| 1 | Haripriya | Baseline feature check (shape, finite values, stats, flat windows, redundancy, subject scale), feature documentation, fold-safe selection A/B | |
