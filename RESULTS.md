@@ -250,6 +250,16 @@ Training without onset windows gave within-subject 0.777 ± 0.051 and new-subjec
 
 To reproduce: run setup and real-data loading, then **Stage 2: drop onset transition windows**. `ONSET_SUBJECTS = range(1, 6)` selects S1–S5 and `K = 2` sets the number of dropped windows.
 
+## Feature extraction: wavelet features on S1–S22 — declared before running, 2026-11-19
+
+- Exactly three settings, each adding one change: (1) current 50 features; (2) relative MAV: replace the ten MAV features with each channel's share of total MAV (50 features); (3) relative MAV + wavelet: also replace the ten MNF features with wavelet band shares (70 features).
+- Wavelet features: two-level Haar transform of each mean-removed 200 ms window, per channel. Energy in D1 (~25–50 Hz), D2 (~12.5–25 Hz) and A2 (~0–12.5 Hz), kept as shares of the total: 3 per channel, 30 in total. Flat channels get zero shares instead of MNF's artificial 25 Hz.
+- Motivation: a second feature domain (time–frequency), as the course asks. MNF from a raw rFFT of 20 samples is the weak estimate the track instructions flag. DB1 is a low-pass envelope at 100 Hz, so the bands describe how the activity level changes, not the raw EMG spectrum.
+- Fixed: S1–S22, E1; RMS normalisation from calibration repetitions 1–2; train/score repetitions 3–10; 200 ms windows, 150 ms step; supplied random forest, seed 0, balanced weights; no feature selection. Same folds for all three: 5-fold GroupKFold by subject, and 5 repetition folds within each subject.
+- Decision rule: keep relative MAV (the team's current choice) unless it lowers the new-subject mean. Adopt wavelet only if it raises the new-subject mean, improves at least 12 of 22 subjects, and lowers the within-subject mean by no more than 0.01. Differences smaller than the subject SD are reported as inconclusive. No other settings will be tried.
+- Also recorded from the same run (no extra models): windows per gesture, to decide imbalance handling; and the worst new-subject scores (symptom table: "worst-subject metric far below the mean"; S2 scored 0.068 vs mean 0.248 in iteration 23).
+- Comparison count: 3 settings, on top of the 25 iterations already logged. S23–S27 stay untouched.
+
 ## Who did what
 
 | Iteration | Who | Modules / tasks owned | Reviewed by |
