@@ -280,6 +280,19 @@ Limitations:
 
 To reproduce: run setup, real-data loading, the **normalisation definition** cell, the S1–S22 preparation cell (`norm22_recs`), and the `RelativeMAVTrack` class cell, then **Stage 3: wavelet features on S1–S22** (two code cells). It took 66 min on one laptop (Python 3.11.4, NumPy 2.4.6, SciPy 1.17.1, scikit-learn 1.9.1). Settings and per-subject results: `outputs/emg_inspection/wavelet_features_s1_s22_results.json`.
 
+## Final-pipeline checks on S1–S22 — declared before running, 2026-11-20
+
+- Purpose: the notebook's "Read downstream symptoms backwards" table, and the instructor's note that an improvement must be larger than the score's variation when nothing changes.
+- Final pipeline (fixed): S1–S22, E1; RMS normalisation from calibration repetitions 1–2 (Calibration setting); train/score repetitions 3–10; 200 ms windows, 150 ms step; current 50 features; supplied random forest, balanced weights, no feature selection. Same folds: 5-fold GroupKFold by subject, and 5 repetition folds within each subject.
+- Exactly six model settings: (A) final pipeline, seed 0, which should reproduce iteration 26 / 23 exactly; (B) seed 1; (C) seed 2; (D) seed 0 with `imbalance="none"`; (E) seed 0 with `select="anova"`, `select_k=25`, fitted inside each training fold; (F) seed 0, current 50 features plus 45 inter-channel correlation features (95 in total).
+- Correlation features (F): Pearson correlation of each pair of the 10 RMS-normalised channels within each 200 ms window, computed from that window alone (0 when a channel is flat in that window). Motivation: describes which muscles are active together, independent of each channel's amplitude.
+- Plus one leakage demonstration (not a setting): the same features and classifier, seed 0, scored with a random stratified 5-fold split of windows that ignores subjects and repetitions.
+- Seed noise: the range (max − min) of the subject-mean macro-F1 across seeds 0, 1, 2, per mode. A difference smaller than this range counts as no difference.
+- Decision rules: keep `imbalance="balanced"` unless `"none"` changes the new-subject mean by more than the seed range. Adopt anova k=25 only if it raises the new-subject mean by more than the seed range and improves at least 12 of 22 subjects; otherwise keep all 50 features. Adopt correlation features only under the same two conditions (new-subject gain above the seed range, at least 12 of 22 subjects improved).
+- Symptom table checks: "one class near-zero recall": report per-gesture recall in both modes from setting A, and list gestures with new-subject recall below 0.10; no fix in this round. "Feature selection changed nothing" and "spread across groups is huge": tested by setting E (k=25, below the 50 features). "Leaky split far above honest": report the leak gap.
+- Prediction written before running: the leaky random split will score close to or above the within-subject level (~0.8 or more), far above new-subject (~0.25).
+- Comparison count: 6 settings + 1 leakage demonstration, on top of the 28 iterations already logged. S23–S27 stay untouched.
+
 ## Who did what
 
 | Iteration | Who | Modules / tasks owned | Reviewed by |
